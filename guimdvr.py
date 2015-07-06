@@ -7,7 +7,6 @@ from functools import partial
 from mdvr import MDVR
 from tkMessageBox import showerror
 from time import sleep
-from socket import error
 
 REGIP = re.compile(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
 REGPORT = re.compile(r'\d{1,5}$')

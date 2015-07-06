@@ -176,20 +176,6 @@ class MDVR(Thread):
                     self.stoponekeyalarm()
                 elif cji == 'C107':
                     self.analysisC107(data, count, servertime)
-                    # self.replyC107(count, servertime, '1')
-                    # try:
-                    #     trafficfence = REGTRAFFICFENCE.match(data)
-                    #     if trafficfence.group(2) == '1':
-                    #         if trafficfence.group(1) not in self.trafficfenceid:
-                    #             self.trafficfenceid.append(trafficfence.group(1))
-                    #     elif trafficfence.group(2) == '3':
-                    #         try:
-                    #             self.trafficfenceid.remove(trafficfence.group(1))
-                    #         except ValueError:
-                    #             pass
-                    # except AttributeError:
-                    #     pass
-
 
     def analysisC107(self, data, count, servertime):
         success = '0'
