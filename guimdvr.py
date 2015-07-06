@@ -14,6 +14,7 @@ REGCARID = re.compile(r'\w{1,7}$')
 REGJINGDU = re.compile(r'-?\d{1,5}(\.\d{1,4})?$')
 REGWEIDU = re.compile(r'-?\d{1,4}(\.\d{1,4})?$')
 REGSPEEDANDDIRECTION = re.compile(r'\d{1,3}(\.\d{1,2})?$')
+REGNO = re.compile(r'.*')
 
 
 class GuiMDVR(object):
@@ -33,7 +34,7 @@ class GuiMDVR(object):
         self.mdvrid = Entry()
         self.inputbox('mdvrid', 'MDVR芯片号', 'self.frame[0]', 10, 'REGMDVRID', '0072001234')
         self.carid = Entry()
-        self.inputbox('carid', '车牌号', 'self.frame[0]', 7, 'REGCARID', 'car1234')
+        self.inputbox('carid', '车牌号', 'self.frame[0]', 7, 'REGCARID', 'CAR1234')
 
         self.gps1 = Entry()
         self.inputbox('gps1', '经度', 'self.frame[1]', 11, 'REGJINGDU', '11619.6706')
@@ -46,57 +47,93 @@ class GuiMDVR(object):
         self.setgps = Button()
         self.userbutton('setgps', '设置GPS', 'self.frame[1]', 'self.setgpsinfo')
 
-        self.start = Button()
-        self.userbutton('start', '开始', 'self.frame[2]', 'self.startmdvr', 'NORMAL')
-        self.stop = Button()
-        self.userbutton('stop', '停止', 'self.frame[2]', 'self.stopmdvr')
-        self.selfcheck = Button()
-        self.userbutton('selfcheck', '发送自检', 'self.frame[2]', 'self.sendselfcheck')
-        self.startonekeyalarm = Button()
-        self.userbutton('startonekeyalarm', '一键报警', 'self.frame[2]', 'self._startonekeyalarm')
-        self.stoponekeyalarm = Button()
-        self.userbutton('stoponekeyalarm', '停止一键报警', 'self.frame[2]', 'self._stoponekeyalarm')
-        self.fencealert = Button()
-        self.userbutton('fencealert', '区域围栏告警', 'self.frame[2]', 'self._fencealert')
+        self.databaseip = Entry()
+        self.inputbox('databaseip', '数据库IP', 'self.frame[2]', 15, 'REGIP', '172.16.50.53')
+        self.instancename = Entry()
+        self.inputbox('instancename', '数据库实例名', 'self.frame[2]', 10, 'REGMDVRID', 'newsima')
+        self.username = Entry()
+        self.inputbox('username', '用户名', 'self.frame[2]', 10, 'REGNO', 'vms')
+        self.password = Entry()
+        self.inputbox('password', '密码', 'self.frame[2]', 10, 'REGNO', 'vms')
+        self.password.config(show='*')
 
-        Label(self.frame[3], text='已设置电子围栏编号：').pack(side=LEFT)
+        self.start = Button()
+        self.userbutton('start', '开始', 'self.frame[3]', 'self.startmdvr', 'NORMAL')
+        self.stop = Button()
+        self.userbutton('stop', '停止', 'self.frame[3]', 'self.stopmdvr')
+        self.sendcarid = Button()
+        self.userbutton('sendcarid', '设置并发送车牌号', 'self.frame[3]', 'self._sendcarid')
+        self.selfcheck = Button()
+        self.userbutton('selfcheck', '发送自检', 'self.frame[3]', 'self.sendselfcheck')
+        self.insertvideodata = Button()
+        self.userbutton('insertvideodata', '插入视频数据', 'self.frame[3]', 'self._insertvideodata')
+        self.startonekeyalarm = Button()
+        self.userbutton('startonekeyalarm', '一键报警', 'self.frame[3]', 'self._startonekeyalarm')
+        self.stoponekeyalarm = Button()
+        self.userbutton('stoponekeyalarm', '停止一键报警', 'self.frame[3]', 'self._stoponekeyalarm')
+        self.fencealert = Button()
+        self.userbutton('fencealert', '区域围栏告警', 'self.frame[3]', 'self._fencealert')
+        self.overspeedalert = Button()
+        self.userbutton('overspeedalert', '超速告警', 'self.frame[3]', 'self._overspeedalert')
+
+        Label(self.frame[4], text='已设置电子围栏编号：').pack(side=LEFT)
         self.trafficfenceids = []
         for i in range(10):
-            self.trafficfenceids.append(Text(self.frame[3], width=6, height=1, relief=GROOVE, state=DISABLED, bg='lightgray'))
+            self.trafficfenceids.append(Text(self.frame[4], width=6, height=1, relief=GROOVE, state=DISABLED, bg='lightgray'))
             self.trafficfenceids[i].pack(side=LEFT)
-        self.userbutton('trafficfenceidsreflash', '刷新', 'self.frame[3]', 'self._trafficfenceidsreflash')
+        self.trafficfenceidsreflash = Button()
+        self.userbutton('trafficfenceidsreflash', '刷新', 'self.frame[4]', 'self._trafficfenceidsreflash')
+
+        Label(self.frame[5], text=' 超速告警参数').pack(side=LEFT)
+        Label(self.frame[5], text='       是否开启:').pack(side=LEFT)
+        self.speedruleonoff = Label(self.frame[5], relief=RIDGE, width=5)
+        self.speedruleonoff.pack(side=LEFT)
+        Label(self.frame[5], text=' 低速限制:').pack(side=LEFT)
+        self.speedrulemin = Label(self.frame[5], relief=RIDGE, width=5)
+        self.speedrulemin.pack(side=LEFT)
+        Label(self.frame[5], text=' 高速限制:').pack(side=LEFT)
+        self.speedrulemax = Label(self.frame[5], relief=RIDGE, width=5)
+        self.speedrulemax.pack(side=LEFT)
+        Label(self.frame[5], text=' 持续时间:').pack(side=LEFT)
+        self.speedruletime = Label(self.frame[5], relief=RIDGE, width=6)
+        self.speedruletime.pack(side=LEFT)
+        self.speedrulereflash = Button()
+        self.userbutton('speedrulereflash', '刷新', 'self.frame[5]', 'self._speedrulereflash')
 
         self.inout = IntVar()
         self.inout.set(0)
-        Label(self.frame[4], text='进出电子围栏告警：').pack(side=LEFT)
-        Radiobutton(self.frame[4], variable=self.inout, text='进电子围栏', value=0).pack(side=LEFT)
-        Radiobutton(self.frame[4], variable=self.inout, text='出电子围栏', value=1).pack(side=LEFT)
+        Label(self.frame[6], text='进出电子围栏告警：').pack(side=LEFT)
+        Radiobutton(self.frame[6], variable=self.inout, text='出电子围栏', value=0).pack(side=LEFT)
+        Radiobutton(self.frame[6], variable=self.inout, text='进电子围栏', value=1).pack(side=LEFT)
         self.trafficfenceid = Entry()
-        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[4]', 5, 'REGPORT', '0')
+        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[6]', 5, 'REGPORT', '0')
 
         self.subtype = IntVar()
         self.subtype.set(12)
-        Label(self.frame[5], text='区域告警子类型：').pack(side=LEFT)
-        Radiobutton(self.frame[5], variable=self.subtype, text='越界告警', value=12, command=self.changesubtype).pack(side=LEFT)
-        Radiobutton(self.frame[5], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
+        Label(self.frame[7], text='区域告警子类型：').pack(side=LEFT)
+        Radiobutton(self.frame[7], variable=self.subtype, text='越界告警', value=12, command=self.changesubtype).pack(side=LEFT)
+        Radiobutton(self.frame[7], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
         self.speedoverlower = IntVar()
         self.speedoverlower.set(0)
-        Label(self.frame[5], text='    围栏内低速/超速：').pack(side=LEFT)
-        self.speedoverlower1 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
+        Label(self.frame[7], text='    围栏内低速/超速：').pack(side=LEFT)
+        self.speedoverlower1 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
         self.speedoverlower1.pack(side=LEFT)
-        self.speedoverlower2 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
+        self.speedoverlower2 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
         self.speedoverlower2.pack(side=LEFT)
 
         self.minspeed = Entry()
-        self.inputbox('minspeed', '最小速度', 'self.frame[6]', 6, 'REGSPEEDANDDIRECTION', '0.00', 'DISABLED')
+        self.inputbox('minspeed', '最小速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
         self.maxspeed = Entry()
-        self.inputbox('maxspeed', '最大速度', 'self.frame[6]', 6, 'REGSPEEDANDDIRECTION', '0.00', 'DISABLED')
+        self.inputbox('maxspeed', '最大速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
         self.duringtime = Entry()
-        self.inputbox('duringtime', '持续时间', 'self.frame[6]', 6, 'REGSPEEDANDDIRECTION', '0.00', 'DISABLED')
+        self.inputbox('duringtime', '持续时间', 'self.frame[8]', 6, 'REGPORT', '0')
         self.alarmminspeed = Entry()
-        self.inputbox('alarmminspeed', '告警最小速度', 'self.frame[6]', 6, 'REGSPEEDANDDIRECTION', '0.00', 'DISABLED')
+        self.inputbox('alarmminspeed', '告警最小速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
         self.alarmmaxspeed = Entry()
-        self.inputbox('alarmmaxspeed', '告警最大速度', 'self.frame[6]', 6, 'REGSPEEDANDDIRECTION', '0.00', 'DISABLED')
+        self.inputbox('alarmmaxspeed', '告警最大速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
+
+        # self.tmp = Button()
+        # self.userbutton('tmp', 'test', 'self.frame[9]', 'self.test', 'NORMAL')
 
 
     def userbutton(self, name, tips, father, command, state='DISABLED'):
@@ -142,19 +179,16 @@ class GuiMDVR(object):
                             self.gps1.get(), self.gps2.get(), self.speed.get(), self.direction.get())
         self.mdvrcli.start()
         self.mdvrid.config(state=DISABLED)
-        self.carid.config(state=DISABLED)
         self.ip.config(state=DISABLED)
         self.port.config(state=DISABLED)
         self.start.config(state=DISABLED)
         for i in self.runtimebutton:
             i.config(state=NORMAL)
         self.stoponekeyalarm.config(state=DISABLED)
-        self.test()
 
     def stopmdvr(self):
         self.mdvrcli.stop()
         self.mdvrid.config(state=NORMAL)
-        self.carid.config(state=NORMAL)
         self.ip.config(state=NORMAL)
         self.port.config(state=NORMAL)
         self.start.config(state=NORMAL)
@@ -186,11 +220,6 @@ class GuiMDVR(object):
 
     def changesubtype(self):
         state = NORMAL if self.subtype.get() == 13 else DISABLED
-        self.minspeed.config(state=state)
-        self.maxspeed.config(state=state)
-        self.duringtime.config(state=state)
-        self.alarmminspeed.config(state=state)
-        self.alarmmaxspeed.config(state=state)
         self.speedoverlower1.config(state=state)
         self.speedoverlower2.config(state=state)
 
@@ -203,8 +232,25 @@ class GuiMDVR(object):
             self.mdvrcli.sendV79(self.inout.get(), self.trafficfenceid.get(), 13,
                                  self.speedoverlower.get(), self.minspeed.get(), self.maxspeed.get(), self.duringtime.get(), self.alarmminspeed.get(), self.alarmmaxspeed.get())
 
+    def _sendcarid(self):
+        self.mdvrcli.carID = self.carid.get()
+        self.mdvrcli.sendonline()
+
+    def _insertvideodata(self):
+        self.mdvrcli.insertvideotodatabase(self.databaseip.get(), self.instancename.get(), self.username.get(), self.password.get())
+
+    def _speedrulereflash(self):
+        self.speedruleonoff.config(text='开启' if self.mdvrcli.speedrule[0] else '关闭')
+        self.speedrulemin.config(text=self.mdvrcli.speedrule[1])
+        self.speedrulemax.config(text=self.mdvrcli.speedrule[2])
+        self.speedruletime.config(text=self.mdvrcli.speedrule[3])
+
+    def _overspeedalert(self):
+        self.mdvrcli.sendV70(self.minspeed.get(), self.maxspeed.get(), self.duringtime.get())
+
     def test(self):
         self.mdvrcli.trafficfenceid = ['12345', '23456', '34567', '45678', '56789', '67890', '78901']
+        self.mdvrcli.speedrule = (True, 0,123,444)
 
 
 if __name__ == '__main__':

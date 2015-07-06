@@ -7,15 +7,18 @@ from threading import Thread
 from time import ctime, strftime, sleep
 import re
 from uuid import uuid1
+import cx_Oracle
 
 REGCJI = re.compile(r',\w{10},[^,]*,(C\d{1,3}),.*')
 REGCOUNT = re.compile(r',\w{10},([^,]*),C\d{1,3},\d+ \d+,.*')
 REGSERVERTIME = re.compile(r',\w{10},[^,]*,C\d{1,3},(\d+ \d+),.*')
 REGTRAFFICFENCE = re.compile(r',\w{10},[^,]*,C107,\d+ \d+,(\d*),(\d),.*')
+REGSPEEDRULE = re.compile(r',\w{10},[^,]*,C68,\d+ \d+,(\d),(\d+),(\d+),(\d+)#')
 COMMONVMESSAGE = ',%s,%s,%s,%s,%s,%s,%s,%s,%s,8100000000000000,0000000000000000,46.00,999.00,01000000.0000,,,0,0,0,'
 SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                'V30': '%d#',
                'V61': ',,,,,,,,,,,,,,,,%d,1,1,PB1#',
+               'V70': ',,,,,,,,,,,,,,,,%s,1,%.2f,%.2f,%.2f,%d,1,1,0.00,199.99#',
                'V79': ',,,,,,,,,,,,,,,,%s,1,1,%d,%s,,,%d,%d%s#',
                'V77': '02000000,,#',
                'V600': '''3,1,1327,1327,<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
@@ -46,6 +49,7 @@ SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
 </MDVRBus>
 #'''}
 REPLYMESSAGE = {'C70': '%s,,#',
+                'C68': '%s,%s,,#',
                 'C107': '%s,1%s#'}
 ERRORCODE = {'00030011': 'area limited by adding',
              '00030012': 'area existing by adding',
@@ -71,6 +75,7 @@ class MDVR(Thread):
         self.setName(self.mdvrID)
         mdvrList[self.mdvrID] = self
         self.trafficfenceid = []
+        self.speedrule = (False, 0, 0, 0)
 
     def run(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
@@ -119,11 +124,14 @@ class MDVR(Thread):
             pass
         elif subtype == 13:
             parameternum = 7
-            substr = ',%s,%.2f,%.2f,%s,%.2f,%.2f,%.2f' % (speedoverlower, float(minspeed), float(maxspeed), self.gpsinfo[3], float(duringtime), float(alarmminspeed), float(alarmmaxspeed))
+            substr = ',%s,%.2f,%.2f,%s,%d,%.2f,%.2f' % (speedoverlower, float(minspeed), float(maxspeed), self.gpsinfo[3], int(duringtime), float(alarmminspeed), float(alarmmaxspeed))
         self.send('V79', uuid1(), inout, trafficfenceid, subtype, parameternum, substr)
 
     def sendgps(self, gpstype):
         self.send('V30', gpstype)
+
+    def sendV70(self, speedmin, speedmax, duringtime):
+        self.send('V70', uuid1(), float(self.gpsinfo[3]), float(speedmin), float(speedmax), int(duringtime))
 
     def _onekeyalarm(self):
         self.sendonekeyalarm()
@@ -211,6 +219,20 @@ class MDVR(Thread):
         except AttributeError:
             pass
 
+    def analysisC68(self, data, count, servertime):
+        try:
+            speedrule = REGSPEEDRULE.match(data)
+            if speedrule.group(1) == '0':
+                self.speedrule = (False, 0, 0, 0)
+            elif speedrule.group(1) == '1':
+                self.speedrule = (True, int(speedrule.group(2)), int(speedrule.group(3)), int(speedrule.group(4)))
+            self.replyC68(count, servertime, '1', speedrule.group(1))
+        except AttributeError:
+            pass
+
+    def replyC68(self, count, servertime, success, onoff):
+        self.reply('C68', count, servertime, success, onoff)
+
     def replyC70(self, count, servertime, success):
         self.reply('C70', count, servertime, success)
 
@@ -271,3 +293,15 @@ class MDVR(Thread):
         self.gpsinfo[3] = '%.2f' % float(speed)
         self.gpsinfo[4] = '%.2f' % float(direction)
         self.gpsinfo[0] = 'V' if len(gps1) == 0 and len(gps2) == 0 else 'A'
+
+    def insertvideotodatabase(self, databaseip, instancename, username='vms', password='vms'):
+        conn = cx_Oracle.connect('%s/%s@%s/%s' % (username, password, databaseip, instancename))
+        cursor = conn.cursor()
+        cursor.execute('''select video_file from vms.ALARM_VIDEO''')
+        filename = cursor.fetchone()[0]
+        cursor.execute('''insert into vms.ALARM_VIDEO
+        (uuid, mdvr_id, channel_id, stream_id, alarm_id, start_time, end_time, video_size, video_file)
+        values(%s, %s, 0, 2, %s, to_date('%s','yyyymmddhh24miss'), to_date('%s','yyyymmddhh24miss'), 10240, '%s')'''
+                       % (uuid1(), self.mdvrID, self.onekeyalarmtimes, strftime('%Y%m%d%H%M%S'), strftime('%Y%m%d%H%M%S'), filename))
+        conn.commit()
+        conn.close()
