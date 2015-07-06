@@ -83,10 +83,10 @@ class GuiMDVR(object):
         Radiobutton(self.frame[5], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
         self.speedoverlower = IntVar()
         self.speedoverlower.set(0)
-        Label(self.frame[5], text='    围栏内超速/低速：').pack(side=LEFT)
-        self.speedoverlower1 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='超速', value=0, state=DISABLED)
+        Label(self.frame[5], text='    围栏内低速/超速：').pack(side=LEFT)
+        self.speedoverlower1 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
         self.speedoverlower1.pack(side=LEFT)
-        self.speedoverlower2 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='低速', value=1, state=DISABLED)
+        self.speedoverlower2 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
         self.speedoverlower2.pack(side=LEFT)
 
         self.minspeed = Entry()

@@ -46,7 +46,11 @@ SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
 </MDVRBus>
 #'''}
 REPLYMESSAGE = {'C70': '%s,,#',
-                'C107': '%s,1#'}
+                'C107': '%s,1%s#'}
+ERRORCODE = {'00030011': 'area limited by adding',
+             '00030012': 'area existing by adding',
+             '00030021': 'not exist by modifying',
+             '00030031': 'not exist by deleting'}
 
 mdvrList = {}
 
@@ -171,25 +175,61 @@ class MDVR(Thread):
                     self.replyC70(count, servertime, '1')
                     self.stoponekeyalarm()
                 elif cji == 'C107':
-                    self.replyC107(count, servertime, '1')
-                    try:
-                        trafficfence = REGTRAFFICFENCE.match(data)
-                        if trafficfence.group(2) == '1':
-                            if trafficfence.group(1) not in self.trafficfenceid:
-                                self.trafficfenceid.append(trafficfence.group(1))
-                        elif trafficfence.group(2) == '3':
-                            try:
-                                self.trafficfenceid.remove(trafficfence.group(1))
-                            except ValueError:
-                                pass
-                    except AttributeError:
-                        pass
+                    self.analysisC107(data, count, servertime)
+                    # self.replyC107(count, servertime, '1')
+                    # try:
+                    #     trafficfence = REGTRAFFICFENCE.match(data)
+                    #     if trafficfence.group(2) == '1':
+                    #         if trafficfence.group(1) not in self.trafficfenceid:
+                    #             self.trafficfenceid.append(trafficfence.group(1))
+                    #     elif trafficfence.group(2) == '3':
+                    #         try:
+                    #             self.trafficfenceid.remove(trafficfence.group(1))
+                    #         except ValueError:
+                    #             pass
+                    # except AttributeError:
+                    #     pass
+
+
+    def analysisC107(self, data, count, servertime):
+        success = '0'
+        errorcode = ''
+        extramessage = ''
+
+        try:
+            trafficfence = REGTRAFFICFENCE.match(data)
+            if trafficfence.group(2) == '1':
+                if len(self.trafficfenceid) >=10:
+                    errorcode = '00030011'
+                elif trafficfence.group(1) in self.trafficfenceid:
+                    errorcode = '00030012'
+                else:
+                    self.trafficfenceid.append(trafficfence.group(1))
+                    success = '1'
+            elif trafficfence.group(2) == '2':
+                if trafficfence.group(1) in self.trafficfenceid:
+                    success = '1'
+                else:
+                    errorcode = '00030021'
+            elif trafficfence.group(2) == '3':
+                try:
+                    self.trafficfenceid.remove(trafficfence.group(1))
+                    success = '1'
+                except ValueError:
+                    errorcode = '00030031'
+            if success == '0':
+                extramessage = '1,1,1,%s,%s' % (errorcode, ERRORCODE[errorcode])
+            elif success == '1':
+                extramessage = ''
+            self.replyC107(count, servertime, success, extramessage)
+        except AttributeError:
+            pass
 
     def replyC70(self, count, servertime, success):
         self.reply('C70', count, servertime, success)
 
-    def replyC107(self, count, servertime, success):
-        self.reply('C107', count, servertime, success)
+    def replyC107(self, count, servertime, success, extramessage):
+        self.reply('C107', count, servertime, success, extramessage)
 
     def stoponekeyalarm(self):
         if self.onekeyalarmed:
