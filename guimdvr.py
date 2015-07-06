@@ -6,7 +6,6 @@ from Tkinter import *
 from functools import partial
 from mdvr import MDVR
 from tkMessageBox import showerror
-from time import sleep
 
 REGIP = re.compile(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
 REGPORT = re.compile(r'\d{1,5}$')
