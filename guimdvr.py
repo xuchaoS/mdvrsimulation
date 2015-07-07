@@ -129,7 +129,7 @@ class GuiMDVR(object):
         self.maxspeed = Entry()
         self.inputbox('maxspeed', '最大速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
         self.duringtime = Entry()
-        self.inputbox('duringtime', '持续时间', 'self.frame[8]', 6, 'REGPORT', '0')
+        self.inputbox('duringtime', '持续时间', 'self.frame[8]', 5, 'REGPORT', '0')
         self.alarmminspeed = Entry()
         self.inputbox('alarmminspeed', '告警最小速度', 'self.frame[8]', 6, 'REGSPEEDANDDIRECTION', '0.00')
         self.alarmmaxspeed = Entry()
