@@ -75,6 +75,8 @@ class GuiMDVR(object):
         self.userbutton('fencealert', '区域围栏告警', 'self.frame[3]', 'self._fencealert')
         self.overspeedalert = Button()
         self.userbutton('overspeedalert', '超速告警', 'self.frame[3]', 'self._overspeedalert')
+        self.sendnormalgps = Button()
+        self.userbutton('sendnormalgps', '发送GPS', 'self.frame[3]', 'self._sendnormalgps')
 
         Label(self.frame[4], text='已设置电子围栏编号：').pack(side=LEFT)
         self.trafficfenceids = []
@@ -115,7 +117,8 @@ class GuiMDVR(object):
         Radiobutton(self.frame[7], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
         self.speedoverlower = IntVar()
         self.speedoverlower.set(0)
-        Label(self.frame[7], text='    围栏内低速/超速：').pack(side=LEFT)
+        self.speedoverlowertips = Label(self.frame[7], text='          围栏内低速/超速：', fg='gray')
+        self.speedoverlowertips.pack(side=LEFT)
         self.speedoverlower1 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
         self.speedoverlower1.pack(side=LEFT)
         self.speedoverlower2 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
@@ -154,12 +157,13 @@ class GuiMDVR(object):
         str = ev.widget.get()
         self._tmp = str if len(str) <= limit else self._tmp
 
-    def lenlimit(self, limit, ev=None):
+    def lenlimit(self, limit, checkrule=REGNO, ev=None):
         widget = ev.widget
         str = widget.get()
         if len(str) > limit:
             widget.delete(0, END)
             widget.insert(0, self._tmp)
+        self.check(checkrule,ev)
 
     def check(self, checkrule, ev=None):
         widget = ev.widget
@@ -171,8 +175,8 @@ class GuiMDVR(object):
 
     def _bind(self, obj, limit, checkrule):
         obj.bind('<KeyPress>', lambda ev=None: self.record(limit, ev))
-        obj.bind('<KeyRelease>', lambda ev=None: self.lenlimit(limit, ev))
-        obj.bind('<FocusOut>', lambda ev=None: self.check(checkrule, ev))
+        obj.bind('<KeyRelease>', lambda ev=None: self.lenlimit(limit, checkrule, ev))
+        # obj.bind('<FocusOut>', lambda ev=None: self.check(checkrule, ev))
 
     def startmdvr(self):
         self.mdvrcli = MDVR(self.mdvrid.get(), self.carid.get(), self.ip.get(), int(self.port.get()),
@@ -188,6 +192,7 @@ class GuiMDVR(object):
 
     def stopmdvr(self):
         self.mdvrcli.stop()
+        self.mdvrcli
         self.mdvrid.config(state=NORMAL)
         self.ip.config(state=NORMAL)
         self.port.config(state=NORMAL)
@@ -209,6 +214,9 @@ class GuiMDVR(object):
     def sendselfcheck(self):
         self.mdvrcli.sendselfcheck()
 
+    def _sendnormalgps(self):
+        self.mdvrcli.sendgps(0)
+
     def _trafficfenceidsreflash(self):
         for i in range(10):
             self.trafficfenceids[i].config(state=NORMAL)
@@ -220,6 +228,8 @@ class GuiMDVR(object):
 
     def changesubtype(self):
         state = NORMAL if self.subtype.get() == 13 else DISABLED
+        fg = 'black' if state == NORMAL else 'gray'
+        self.speedoverlowertips.config(fg=fg)
         self.speedoverlower1.config(state=state)
         self.speedoverlower2.config(state=state)
 

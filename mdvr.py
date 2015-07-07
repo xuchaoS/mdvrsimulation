@@ -13,7 +13,7 @@ REGCJI = re.compile(r',\w{10},[^,]*,(C\d{1,3}),.*')
 REGCOUNT = re.compile(r',\w{10},([^,]*),C\d{1,3},\d+ \d+,.*')
 REGSERVERTIME = re.compile(r',\w{10},[^,]*,C\d{1,3},(\d+ \d+),.*')
 REGTRAFFICFENCE = re.compile(r',\w{10},[^,]*,C107,\d+ \d+,(\d*),(\d),.*')
-REGSPEEDRULE = re.compile(r',\w{10},[^,]*,C68,\d+ \d+,(\d),(\d+),(\d+),(\d+)#')
+REGSPEEDRULE = re.compile   (r',\w{10},[^,]*,C68,\d+ \d+,(\d),(\d+),(\d+),(\d+)\#')
 COMMONVMESSAGE = ',%s,%s,%s,%s,%s,%s,%s,%s,%s,8100000000000000,0000000000000000,46.00,999.00,01000000.0000,,,0,0,0,'
 SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                'V30': '%d#',
@@ -184,6 +184,8 @@ class MDVR(Thread):
                     self.stoponekeyalarm()
                 elif cji == 'C107':
                     self.analysisC107(data, count, servertime)
+                elif cji == 'C68':
+                    self.analysisC68(data, count, servertime)
 
     def analysisC107(self, data, count, servertime):
         success = '0'
@@ -258,8 +260,8 @@ class MDVR(Thread):
         return result
 
     def log(self, *args):
-        message = ''.join([ctime(), ' '] + list(args))
-        print message
+        message = ''.join([ctime(), ' '] + list(args) + ['\n'])
+        print message,
 
     def send(self, vji, *args):
         if self.connect:
@@ -301,7 +303,11 @@ class MDVR(Thread):
         filename = cursor.fetchone()[0]
         cursor.execute('''insert into vms.ALARM_VIDEO
         (uuid, mdvr_id, channel_id, stream_id, alarm_id, start_time, end_time, video_size, video_file)
-        values(%s, %s, 0, 2, %s, to_date('%s','yyyymmddhh24miss'), to_date('%s','yyyymmddhh24miss'), 10240, '%s')'''
+        values('%s', '%s', 0, 2, '%s', to_date('%s','yyyymmddhh24miss'), to_date('%s','yyyymmddhh24miss'), 10240, '%s')'''
                        % (uuid1(), self.mdvrID, self.onekeyalarmtimes, strftime('%Y%m%d%H%M%S'), strftime('%Y%m%d%H%M%S'), filename))
         conn.commit()
         conn.close()
+        self.log('Insert video file to database, filename is: %s' % filename)
+
+    def exit_thread(self):
+        raise SystemExit
