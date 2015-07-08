@@ -41,6 +41,9 @@ class Client(Thread):
         tmp = Thread(target=self.receive)
         tmp.start()
 
+    def __str__(self):
+        return 'MDVRID:%s  CARID:%s  IP:%s  PORT:%d' % (self.mdvrID, self.carID, str(self.addr[0]),  self.addr[1])
+
     def receive(self):
         try:
             while True:
@@ -74,7 +77,7 @@ class Client(Thread):
             pass
 
     def log(self, *args):
-        message = ''.join([ctime(), ' '] + list(args))
+        message = ''.join(['server', ctime(), ' '] + list(args) + ['\n'])
         print message
 
     def dataanalysis(self, data):
@@ -131,6 +134,10 @@ class Client(Thread):
 
     def sendC107(self, type):
         self.tcpCliSock.send('99dc0180,%s,13816:0,C107,%s,13816,%d,41,,00:00-23:59,1,1,1,W06751.1136N00935.7794W06303.8070N01001.7445W06245.1065N00822.7371W06542.7607N00555.1518W06751.1136N00935.7794#' % (self.mdvrID, strftime('%y%m%d %H%M%S'), type))
+
+    def sendC30(self):
+        self.tcpCliSock.send('99dc0053,%s,16297,C30,%s,1,50,20,121,0003#' % (self.mdvrID, strftime('%y%m%d %H%M%S')))
+
 
 def main():
     server = socket(AF_INET, SOCK_STREAM)

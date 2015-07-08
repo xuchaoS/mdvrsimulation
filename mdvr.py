@@ -13,21 +13,24 @@ REGCJI = re.compile(r',\w{10},[^,]*,(C\d{1,3}),.*')
 REGCOUNT = re.compile(r',\w{10},([^,]*),C\d{1,3},\d+ \d+,.*')
 REGSERVERTIME = re.compile(r',\w{10},[^,]*,C\d{1,3},(\d+ \d+),.*')
 REGTRAFFICFENCE = re.compile(r',\w{10},[^,]*,C107,\d+ \d+,(\d*),(\d),.*')
-REGSPEEDRULE = re.compile   (r',\w{10},[^,]*,C68,\d+ \d+,(\d),(\d+),(\d+),(\d+)\#')
+REGSPEEDRULE = re.compile(r',\w{10},[^,]*,C68,\d+ \d+,(\d),(\d+),(\d+),(\d+)\#')
+REGNORMALGPS = re.compile(r',\w{10},[^,]*,C30,\d+ \d+,(\d),(\d+),(\d+),(\d+),.*')
 COMMONVMESSAGE = ',%s,%s,%s,%s,%s,%s,%s,%s,%s,8100000000000000,0000000000000000,46.00,999.00,01000000.0000,,,0,0,0,'
 SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                'V30': '%d#',
                'V61': ',,,,,,,,,,,,,,,,%d,1,1,PB1#',
+               'V68': ',,,,,,,,,,,,,,,,%s,1,%d,%.2f,%.2f,%.2f,1,%d,0.00,99.99#',
                'V70': ',,,,,,,,,,,,,,,,%s,1,%.2f,%.2f,%.2f,%d,1,1,0.00,199.99#',
+               'V75': ',,,,,,,,,,,,,,,,%s,1,%d,%s,%s,%s#,',
                'V79': ',,,,,,,,,,,,,,,,%s,1,1,%d,%s,,,%d,%d%s#',
                'V77': '02000000,,#',
                'V600': '''3,1,1327,1327,<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <MDVRBus version="1.0">
-    <CheckInfo UNIT_ID="%s" _TIME_="2015/05/25 10:33:18 MON" _ZONE_="-4:30">
+    <CheckInfo UNIT_ID="%s" _TIME_="%s" _ZONE_="+8">
         <InfoClass _TYPE_="InspectInfo">
             <InfoList>
                 <_INFO_ _NAME_="_SN_" _STAT_="%s" />
-                <_INFO_ _NAME_="_TIME_" _STAT_="2015/05/25 10:33:18 MON" />
+                <_INFO_ _NAME_="_TIME_" _STAT_="%s" />
                 <_INFO_ _NAME_="RecSD" _STAT_="E" />
                 <_INFO_ _NAME_="GPSINFO" _STAT_="%s" />
                 <_INFO_ _NAME_="Sensor1" _STAT_="FAIL" />
@@ -50,6 +53,7 @@ SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
 #'''}
 REPLYMESSAGE = {'C70': '%s,,#',
                 'C68': '%s,%s,,#',
+                'C30': '%s,%s,,#',
                 'C107': '%s,1%s#'}
 ERRORCODE = {'00030011': 'area limited by adding',
              '00030012': 'area existing by adding',
@@ -59,9 +63,9 @@ ERRORCODE = {'00030011': 'area limited by adding',
 mdvrList = {}
 
 
-class MDVR(Thread):
+class MDVR(object):
     def __init__(self, mdvrid, carid, ip='127.0.0.1', port=9876, gps1='', gps2='', speed='0', direction='0'):
-        Thread.__init__(self)
+        super(MDVR, self).__init__()
         self.ip = ip
         self.port = port
         self.mdvrID = mdvrid
@@ -72,17 +76,20 @@ class MDVR(Thread):
         self.connect = False
         self.onekeyalarmed = False
         self.onekeyalarmtimes = 0
-        self.setName(self.mdvrID)
+        #self.setName(self.mdvrID)
         mdvrList[self.mdvrID] = self
         self.trafficfenceid = []
         self.speedrule = (False, 0, 0, 0)
+        self.sendnormalgpsd = False
+        self.lastreceive = ''
 
-    def run(self):
+    def start(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
         try:
             self.sock.connect((self.ip, self.port))
         except error:
             self.log('Connect fail!!!')
+            return -1
         else:
             self.connect = True
             receive = Thread(target=self.receive)
@@ -107,14 +114,22 @@ class MDVR(Thread):
 
     def stop(self):
         self.connect = False
+        self.onekeyalarmed = False
         self.sock.close()
 
     def sendselfcheck(self):
-        self.send('V600', self.mdvrID, self.mdvrID, self.gpsinfo[0])
+        currenttime = strftime('%Y/%m/%d %H:%M:%S %a').upper()
+        self.send('V600', self.mdvrID, currenttime, self.mdvrID, currenttime, self.gpsinfo[0])
 
     def sendonekeyalarm(self):
         self.send('V61', self.onekeyalarmtimes)
         self.onekeyalarmtimes += 1
+
+    def sendV75(self, alerttype=2, historytime='', historygps1='', historygps2=''):
+        if alerttype == 0:
+            self.send('V75', uuid1(), alerttype, '', '', '')
+        else:
+            self.send('V75', uuid1(), alerttype, historytime, '%.4f' % float(historygps1), '%.4f' % float(historygps2))
 
     def sendV79(self, inout, trafficfenceid, subtype,
                 speedoverlower=None, minspeed=0, maxspeed=0, duringtime=0, alarmminspeed=0, alarmmaxspeed=0):
@@ -132,6 +147,9 @@ class MDVR(Thread):
 
     def sendV70(self, speedmin, speedmax, duringtime):
         self.send('V70', uuid1(), float(self.gpsinfo[3]), float(speedmin), float(speedmax), int(duringtime))
+
+    def sendV68(self, temperaturetype, currenttemperature, mintemperature, maxtemperature, alerttype):
+        self.send('V68', uuid1(), int(temperaturetype), float(currenttemperature), float(mintemperature), float(maxtemperature), int(alerttype))
 
     def _onekeyalarm(self):
         self.sendonekeyalarm()
@@ -159,6 +177,7 @@ class MDVR(Thread):
                 leaveLen = int(rec2)
                 rec3 = self.sock.recv(leaveLen)
                 self.log('receive:', rec1, rec2, rec3)
+                self.lastreceive = rec1 + rec2 + rec3
                 tmp = Thread(target=self.dataanalysis, args=(rec3,))
                 tmp.start()
 
@@ -186,6 +205,22 @@ class MDVR(Thread):
                     self.analysisC107(data, count, servertime)
                 elif cji == 'C68':
                     self.analysisC68(data, count, servertime)
+                elif cji == 'C30':
+                    self.analysisC30(data, count, servertime)
+
+    def analysisC30(self, data, count, servertime):
+
+        try:
+            normalgps = REGNORMALGPS.match(data)
+            #self.replyC30(count, servertime, '1', normalgps.group(1))
+            if normalgps.group(1) == '1' and self.sendnormalgpsd == False:
+                tmp = Thread(target=self.sendnormalgps, args=(normalgps.group(3), normalgps.group(4)))
+                tmp.setDaemon(True)
+                tmp.start()
+                self.sendnormalgpsd = True
+            self.replyC30(count, servertime, '1', normalgps.group(1))
+        except AttributeError:
+            pass
 
     def analysisC107(self, data, count, servertime):
         success = '0'
@@ -234,6 +269,9 @@ class MDVR(Thread):
 
     def replyC68(self, count, servertime, success, onoff):
         self.reply('C68', count, servertime, success, onoff)
+
+    def replyC30(self, count, servertime, success, onoff):
+        self.reply('C30', count, servertime, success, onoff)
 
     def replyC70(self, count, servertime, success):
         self.reply('C70', count, servertime, success)
@@ -309,5 +347,8 @@ class MDVR(Thread):
         conn.close()
         self.log('Insert video file to database, filename is: %s' % filename)
 
-    def exit_thread(self):
-        raise SystemExit
+    def sendnormalgps(self, delay, count):
+        for i in range(int(count)):
+            self.sendgps(0)
+            sleep(int(delay))
+        self.sendnormalgpsd = False
