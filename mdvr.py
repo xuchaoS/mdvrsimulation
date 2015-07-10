@@ -84,7 +84,6 @@ class MDVR(object):
         self.connect = False
         self.onekeyalarmed = False
         self.onekeyalarmtimes = 0
-        #self.setName(self.mdvrID)
         mdvrList[self.mdvrID] = self
         self.trafficfenceid = []
         self.speedrule = (False, 0, 0, 0)
@@ -214,13 +213,11 @@ class MDVR(object):
         try:
             servertime = analysised['servertime']
             count = analysised['count']
-            # print 'mdvrtime and count'
         except KeyError, e:
             print 'KeyError:', e.message
         else:
             try:
                 cji = analysised['cji']
-                # print 'vji'
             except KeyError, e:
                 print 'KeyError:', e.message
             else:
@@ -237,7 +234,6 @@ class MDVR(object):
                     self.analysisC30(data, count, servertime)
 
     def analysisC30(self, data, count, servertime):
-
         try:
             normalgps = REGNORMALGPS.match(data)
             #self.replyC30(count, servertime, '1', normalgps.group(1))
@@ -254,7 +250,6 @@ class MDVR(object):
         success = '0'
         errorcode = ''
         extramessage = ''
-
         try:
             trafficfence = REGTRAFFICFENCE.match(data)
             if trafficfence.group(2) == '1':

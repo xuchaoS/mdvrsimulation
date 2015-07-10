@@ -3,7 +3,6 @@
 __author__ = 'shangxc'
 
 from Tkinter import *
-from functools import partial
 from mdvr import MDVR
 from tkMessageBox import showerror
 from shangxcgui import ShangxcGUI
@@ -344,7 +343,6 @@ class GuiMDVR(ShangxcGUI):
 
     def _voltagealert(self):
         self.mdvrcli.sendV78(int(float(self.currentvoltage.get())*10), int(float(self.minvoltage.get())*10), int(float(self.maxvoltage.get())*10), self.voltagealerttype.get())
-
 
 if __name__ == '__main__':
     GuiMDVR()
