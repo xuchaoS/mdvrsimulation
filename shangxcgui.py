@@ -46,10 +46,6 @@ class ShangxcGUI(object):
         obj.bind('<KeyPress>', lambda ev=None: self.record(limit, ev))
         obj.bind('<KeyRelease>', lambda ev=None: self.lenlimit(limit, checkrule, ev))
 
-    def _exchange(self):
-        tmp = (float(self.gps1before.get()), float(self.gps2before.get()))
-        for i, j in zip((self.gps1after, self.gps2after),(0,1)):
-            i.config(state=NORMAL)
-            i.delete(1.0, END)
-            i.insert(1.0, '%.4f' % (int(tmp[j])*100+(tmp[j]-int(tmp[j]))*60))
-            i.config(state=DISABLED)
+    def record(self, limit, ev=None):
+        str = ev.widget.get()
+        self._tmp = str if len(str) <= limit else self._tmp

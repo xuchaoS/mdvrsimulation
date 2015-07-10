@@ -18,6 +18,7 @@ REGWEIDU = r'-?\d{1,4}(\.\d{1,4})?$'
 REGSPEEDANDDIRECTION = r'\d{1,3}(\.\d{1,2})?$'
 REGTEMPERATURE = r'-?\d{1,3}(\.\d{1,2})?$'
 REGTIME = r'\d{6} \d{6}$'
+REGVOLTAGE = r'\d{1,2}(\.\d)?$'
 REGNO = r'.*'
 
 
@@ -81,62 +82,66 @@ class GuiMDVR(ShangxcGUI):
         self.overspeedalert = Button()
         self.userbutton('overspeedalert', '超速告警', 'self.frame[3]', 'self._overspeedalert')
 
-        Label(self.frame[4], text='已设置电子围栏编号：').pack(side=LEFT)
-        self.trafficfenceids = []
-        for i in range(10):
-            self.trafficfenceids.append(Text(self.frame[4], width=6, height=1, relief=GROOVE, state=DISABLED, bg='lightgray'))
-            self.trafficfenceids[i].pack(side=LEFT)
-        self.trafficfenceidsreflash = Button()
-        self.userbutton('trafficfenceidsreflash', '刷新', 'self.frame[4]', 'self._trafficfenceidsreflash')
-
-        Label(self.frame[5], text=' 超速告警参数').pack(side=LEFT)
-        Label(self.frame[5], text='       是否开启:').pack(side=LEFT)
-        self.speedruleonoff = Label(self.frame[5], relief=RIDGE, width=5)
-        self.speedruleonoff.pack(side=LEFT)
-        Label(self.frame[5], text=' 低速限制:').pack(side=LEFT)
-        self.speedrulemin = Label(self.frame[5], relief=RIDGE, width=5)
-        self.speedrulemin.pack(side=LEFT)
-        Label(self.frame[5], text=' 高速限制:').pack(side=LEFT)
-        self.speedrulemax = Label(self.frame[5], relief=RIDGE, width=5)
-        self.speedrulemax.pack(side=LEFT)
-        Label(self.frame[5], text=' 持续时间:').pack(side=LEFT)
-        self.speedruletime = Label(self.frame[5], relief=RIDGE, width=6)
-        self.speedruletime.pack(side=LEFT)
-        self.speedrulereflash = Button()
-        self.userbutton('speedrulereflash', '刷新', 'self.frame[5]', 'self._speedrulereflash')
-
-        self.inout = IntVar()
-        self.inout.set(0)
-        Label(self.frame[6], text='进出电子围栏告警：').pack(side=LEFT)
-        Radiobutton(self.frame[6], variable=self.inout, text='出电子围栏', value=0).pack(side=LEFT)
-        Radiobutton(self.frame[6], variable=self.inout, text='进电子围栏', value=1).pack(side=LEFT)
-        self.trafficfenceid = Entry()
-        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[6]', 5, 'REGPORT', '0')
-
         self.subtype = IntVar()
         self.subtype.set(12)
-        Label(self.frame[7], text='区域告警子类型：').pack(side=LEFT)
-        Radiobutton(self.frame[7], variable=self.subtype, text='越界告警', value=12, command=self.changesubtype).pack(side=LEFT)
-        Radiobutton(self.frame[7], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
+        Label(self.frame[4], text='区域告警子类型：').pack(side=LEFT)
+        Radiobutton(self.frame[4], variable=self.subtype, text='越界告警', value=12, command=self.changesubtype).pack(side=LEFT)
+        Radiobutton(self.frame[4], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
+        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[4]', 5, 'REGPORT', '0')
+
+        self.inout = IntVar()
+        self.inout.set(1)
+        self.inouttips = Label(self.frame[5], text='进出电子围栏告警：')
+        self.inouttips.pack(side=LEFT)
+        self.inout1 = Radiobutton(self.frame[5], variable=self.inout, text='进电子围栏', value=1)
+        self.inout1.pack(side=LEFT)
+        self.inout2 = Radiobutton(self.frame[5], variable=self.inout, text='出电子围栏', value=0)
+        self.inout2.pack(side=LEFT)
+        self.trafficfenceid = Entry()
         self.speedoverlower = IntVar()
         self.speedoverlower.set(0)
-        self.speedoverlowertips = Label(self.frame[7], text='          围栏内低速/超速：', fg='gray')
+        self.speedoverlowertips = Label(self.frame[5], text='          围栏内低速/超速：', fg='gray')
         self.speedoverlowertips.pack(side=LEFT)
-        self.speedoverlower1 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
+        self.speedoverlower1 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='低速', value=0, state=DISABLED)
         self.speedoverlower1.pack(side=LEFT)
-        self.speedoverlower2 = Radiobutton(self.frame[7], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
+        self.speedoverlower2 = Radiobutton(self.frame[5], variable=self.speedoverlower, text='超速', value=1, state=DISABLED)
         self.speedoverlower2.pack(side=LEFT)
 
         self.minspeed = Entry()
-        self.inputbox('minspeed', '最小速度', 'self.frame[8]', 6, REGSPEEDANDDIRECTION, '0.00')
+        self.inputbox('minspeed', '最小速度', 'self.frame[6]', 6, REGSPEEDANDDIRECTION, '0.00')
         self.maxspeed = Entry()
-        self.inputbox('maxspeed', '最大速度', 'self.frame[8]', 6, REGSPEEDANDDIRECTION, '0.00')
+        self.inputbox('maxspeed', '最大速度', 'self.frame[6]', 6, REGSPEEDANDDIRECTION, '199.99')
         self.duringtime = Entry()
-        self.inputbox('duringtime', '持续时间', 'self.frame[8]', 5, REGPORT, '0')
+        self.inputbox('duringtime', '持续时间', 'self.frame[6]', 5, REGPORT, '5')
         self.alarmminspeed = Entry()
-        self.inputbox('alarmminspeed', '告警最小速度', 'self.frame[8]', 6, REGSPEEDANDDIRECTION, '0.00')
+        self.inputbox('alarmminspeed', '告警最小速度', 'self.frame[6]', 6, REGSPEEDANDDIRECTION, '0.00')
         self.alarmmaxspeed = Entry()
-        self.inputbox('alarmmaxspeed', '告警最大速度', 'self.frame[8]', 6, REGSPEEDANDDIRECTION, '0.00')
+        self.inputbox('alarmmaxspeed', '告警最大速度', 'self.frame[6]', 6, REGSPEEDANDDIRECTION, '199.99')
+
+        Label(self.frame[7], text='已设置电子围栏编号：').pack(side=LEFT)
+        self.trafficfenceids = []
+        for i in range(10):
+            self.trafficfenceids.append(Text(self.frame[7], width=6, height=1, relief=GROOVE, state=DISABLED, bg='lightgray'))
+            self.trafficfenceids[i].pack(side=LEFT)
+        self.trafficfenceidsreflash = Button()
+        self.userbutton('trafficfenceidsreflash', '刷新', 'self.frame[7]', 'self._trafficfenceidsreflash')
+
+        Label(self.frame[8], text=' 超速告警参数').pack(side=LEFT)
+        Label(self.frame[8], text='       是否开启:').pack(side=LEFT)
+        self.speedruleonoff = Label(self.frame[8], relief=RIDGE, width=5)
+        self.speedruleonoff.pack(side=LEFT)
+        Label(self.frame[8], text=' 低速限制:').pack(side=LEFT)
+        self.speedrulemin = Label(self.frame[8], relief=RIDGE, width=5)
+        self.speedrulemin.pack(side=LEFT)
+        Label(self.frame[8], text=' 高速限制:').pack(side=LEFT)
+        self.speedrulemax = Label(self.frame[8], relief=RIDGE, width=5)
+        self.speedrulemax.pack(side=LEFT)
+        Label(self.frame[8], text=' 持续时间:').pack(side=LEFT)
+        self.speedruletime = Label(self.frame[8], relief=RIDGE, width=6)
+        self.speedruletime.pack(side=LEFT)
+        self.speedrulereflash = Button()
+        self.userbutton('speedrulereflash', '刷新', 'self.frame[8]', 'self._speedrulereflash')
+
 
         self.temperaturetype = IntVar()
         self.temperaturetype.set(0)
@@ -151,13 +156,13 @@ class GuiMDVR(ShangxcGUI):
         Radiobutton(self.frame[9], variable=self.temperaturealerttype, text='高温告警', value=1).pack(side=LEFT)
 
         self.currenttemperature = Entry()
-        self.inputbox('currenttemperature', '触发时温度', 'self.frame[10]', 7, REGTEMPERATURE, '0.00')
+        self.inputbox('currenttemperature', '触发时温度', 'self.frame[10]', 7, REGTEMPERATURE, '37.00')
         self.mintemperature = Entry()
         self.inputbox('mintemperature', '温度最低值', 'self.frame[10]', 7, REGTEMPERATURE, '0.00')
         self.maxtemperature = Entry()
-        self.inputbox('maxtemperature', '温度最高值', 'self.frame[10]', 7, REGTEMPERATURE, '0.00')
+        self.inputbox('maxtemperature', '温度最高值', 'self.frame[10]', 7, REGTEMPERATURE, '99.99')
         self.temperaturealert = Button()
-        self.userbutton('temperaturealert', '发送温度异常告警', 'self.frame[10]', 'self._temperaturealert')
+        self.userbutton('temperaturealert', '温度异常告警', 'self.frame[10]', 'self._temperaturealert')
 
         self.gpsalerttype = IntVar()
         self.gpsalerttype.set(2)
@@ -167,13 +172,45 @@ class GuiMDVR(ShangxcGUI):
         Radiobutton(self.frame[11], variable=self.gpsalerttype, text='GPS信号接收机故障', value=2).pack(side=LEFT)
 
         self.histime = Entry()
-        self.inputbox('histime', '历史时间', 'self.frame[12]', 13, REGTEMPERATURE, strftime('%y%m%d %H%M%S'))
+        self.inputbox('histime', '历史时间', 'self.frame[12]', 13, REGTIME, strftime('%y%m%d %H%M%S'))
         self.hisgps1 = Entry()
         self.inputbox('hisgps1', '历史经度', 'self.frame[12]', 11, REGJINGDU, '11619.6706')
         self.hisgps2 = Entry()
         self.inputbox('hisgps2', '历史纬度', 'self.frame[12]', 10, REGWEIDU, '3959.0540')
         self.gpsalert = Button()
-        self.userbutton('gpsalert', '发送GPS接收机故障告警', 'self.frame[12]', 'self._gpsalert')
+        self.userbutton('gpsalert', 'GPS接收机故障告警', 'self.frame[12]', 'self._gpsalert')
+
+        self.videoalert = []
+        for i in range(4):
+            self.videoalert.append(BooleanVar())
+            Checkbutton(self.frame[13], variable=self.videoalert[i], text='通道%d无信号' % (i+1), onvalue=True, offvalue=False).pack(side=LEFT)
+        self.nonvideo = Button()
+        self.userbutton('nonvideo', '摄像头无信号告警', 'self.frame[13]', 'self._nonvideo')
+
+        self.sderrorcode = []
+        for i in range(5):
+            self.sderrorcode.append(StringVar())
+        Checkbutton(self.frame[14], variable=self.sderrorcode[0], text='存储器不存在', onvalue='00000001', offvalue='').pack(side=LEFT)
+        Checkbutton(self.frame[14], variable=self.sderrorcode[1], text='存储器无法录像', onvalue='00000002', offvalue='').pack(side=LEFT)
+        Checkbutton(self.frame[14], variable=self.sderrorcode[2], text='存储器空间满', onvalue='00000003', offvalue='').pack(side=LEFT)
+        Checkbutton(self.frame[14], variable=self.sderrorcode[3], text='存储器未格式化', onvalue='00000004', offvalue='').pack(side=LEFT)
+        Checkbutton(self.frame[14], variable=self.sderrorcode[4], text='存储器读写异常', onvalue='00000005', offvalue='').pack(side=LEFT)
+        self.sdalert = Button()
+        self.userbutton('sdalert', 'MDVR存储卡错误告警', 'self.frame[14]', 'self._sdalert')
+
+        self.currentvoltage = Entry()
+        self.inputbox('currentvoltage', '当前电压', 'self.frame[15]', 4, REGVOLTAGE, '10.0')
+        self.minvoltage = Entry()
+        self.inputbox('minvoltage', '最低电压', 'self.frame[15]', 4, REGVOLTAGE, '1.0')
+        self.maxvoltage = Entry()
+        self.inputbox('maxvoltage', '最高电压', 'self.frame[15]', 4, REGVOLTAGE, '36.0')
+        self.voltagealerttype = IntVar()
+        self.voltagealerttype.set(0)
+        Label(self.frame[15], text='  告警类别：').pack(side=LEFT)
+        Radiobutton(self.frame[15], variable=self.voltagealerttype, text='低电压告警', value=0).pack(side=LEFT)
+        Radiobutton(self.frame[15], variable=self.voltagealerttype, text='高电压告警', value=1).pack(side=LEFT)
+        self.voltagealert = Button()
+        self.userbutton('voltagealert', '电压异常告警', 'self.frame[15]', 'self._voltagealert')
 
         Label(self.frame[18], text='最后接收指令：').pack(side=LEFT)
         self.lastreceive = Label(self.frame[18],justify=LEFT)
@@ -183,46 +220,6 @@ class GuiMDVR(ShangxcGUI):
 
         # self.tmp = Button()
         # self.userbutton('tmp', 'test', 'self.frame[19]', 'self.test', 'NORMAL')
-
-
-    # def userbutton(self, name, tips, father, command, state='DISABLED'):
-    #     exec "self.%s = Button(%s, text='%s', command=%s, state=%s, bd=3)" % (name, father, tips, command, state)
-    #     exec "self.%s.pack(side=LEFT)" % (name)
-    #     exec '''if %s == DISABLED:
-    #         self.runtimebutton.append(self.%s)''' % (state, name)
-    #
-    # def inputbox(self, name, tips, father, limit, checkrule, defaultvalue, state='NORMAL'):
-    #     exec "Label(%s, text=' %s:').pack(side=LEFT)" % (father, tips)
-    #     exec "self.%s = Entry(%s, bg='white', justify=CENTER, width=%d)" % (name, father, limit+5)
-    #     exec "self._bind(self.%s, %s, %s)" % (name, limit, checkrule)
-    #     exec "self.%s.insert(0, '%s')" % (name, defaultvalue)
-    #     exec "self.%s.pack(side=LEFT)" % (name)
-    #     exec "self.%s.config(state=%s)" % (name, state)
-
-    def record(self, limit, ev=None):
-        str = ev.widget.get()
-        self._tmp = str if len(str) <= limit else self._tmp
-
-    # def lenlimit(self, limit, checkrule=REGNO, ev=None):
-    #     widget = ev.widget
-    #     str = widget.get()
-    #     if len(str) > limit:
-    #         widget.delete(0, END)
-    #         widget.insert(0, self._tmp)
-    #     self.check(checkrule,ev)
-
-    # def check(self, checkrule, ev=None):
-    #     widget = ev.widget
-    #     str = widget.get()
-    #     if checkrule.match(str) == None:
-    #         widget.config(bg='red', fg='white')
-    #     else:
-    #         widget.config(bg='white', fg='black')
-
-    # def _bind(self, obj, limit, checkrule):
-    #     obj.bind('<KeyPress>', lambda ev=None: self.record(limit, ev))
-    #     obj.bind('<KeyRelease>', lambda ev=None: self.lenlimit(limit, checkrule, ev))
-        # obj.bind('<FocusOut>', lambda ev=None: self.check(checkrule, ev))
 
     def startmdvr(self):
         self.mdvrcli = MDVR(self.mdvrid.get(), self.carid.get(), self.ip.get(), int(self.port.get()),
@@ -274,11 +271,21 @@ class GuiMDVR(ShangxcGUI):
             self.trafficfenceids[i].config(state=DISABLED)
 
     def changesubtype(self):
-        state = NORMAL if self.subtype.get() == 13 else DISABLED
-        fg = 'black' if state == NORMAL else 'gray'
-        self.speedoverlowertips.config(fg=fg)
-        self.speedoverlower1.config(state=state)
-        self.speedoverlower2.config(state=state)
+        if self.subtype.get() == 13:
+            self.speedoverlowertips.config(fg='black')
+            self.speedoverlower1.config(state=NORMAL)
+            self.speedoverlower2.config(state=NORMAL)
+            self.inout1.config(state=DISABLED)
+            self.inout2.config(state=DISABLED)
+            self.inouttips.config(fg='gray')
+            self.inout.set(1)
+        elif self.subtype.get() == 12:
+            self.speedoverlowertips.config(fg='gray')
+            self.speedoverlower1.config(state=DISABLED)
+            self.speedoverlower2.config(state=DISABLED)
+            self.inout1.config(state=NORMAL)
+            self.inout2.config(state=NORMAL)
+            self.inouttips.config(fg='black')
 
     def _fencealert(self):
         if self.subtype.get() == 12:
@@ -317,6 +324,26 @@ class GuiMDVR(ShangxcGUI):
 
     def _gpsalert(self):
         self.mdvrcli.sendV75(self.gpsalerttype.get(), self.histime.get(), self.hisgps1.get(), self.hisgps2.get())
+
+    def _nonvideo(self):
+        if self.mdvrcli.sendV63((self.videoalert[0].get(), self.videoalert[1].get(), self.videoalert[2].get(), self.videoalert[3].get())) == -1:
+            showerror('ERROR', '请至少勾选一个无信号的通道号！！！')
+
+    def _sdalert(self):
+        errcode = []
+        for i in self.sderrorcode:
+            if i.get() != '':
+                break
+        else:
+            showerror('ERROR', '请至少勾选一个存储卡错误类型')
+            return -1
+        for i in self.sderrorcode:
+            if i.get() != '':
+                errcode.append(i.get())
+        self.mdvrcli.sendV69(errcode)
+
+    def _voltagealert(self):
+        self.mdvrcli.sendV78(int(float(self.currentvoltage.get())*10), int(float(self.minvoltage.get())*10), int(float(self.maxvoltage.get())*10), self.voltagealerttype.get())
 
 
 if __name__ == '__main__':

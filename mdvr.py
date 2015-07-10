@@ -19,11 +19,14 @@ COMMONVMESSAGE = ',%s,%s,%s,%s,%s,%s,%s,%s,%s,8100000000000000,0000000000000000,
 SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                'V30': '%d#',
                'V61': ',,,,,,,,,,,,,,,,%d,1,1,PB1#',
+               'V63': ',,,,,,,,,,,,,,,,%s,1,%s#',
                'V68': ',,,,,,,,,,,,,,,,%s,1,%d,%.2f,%.2f,%.2f,1,%d,0.00,99.99#',
+               'V69': ',,,,,,,,,,,,,,,,%s,1,1,%s,%s#',
                'V70': ',,,,,,,,,,,,,,,,%s,1,%.2f,%.2f,%.2f,%d,1,1,0.00,199.99#',
                'V75': ',,,,,,,,,,,,,,,,%s,1,%d,%s,%s,%s#,',
                'V79': ',,,,,,,,,,,,,,,,%s,1,1,%d,%s,,,%d,%d%s#',
                'V77': '02000000,,#',
+               'V78': ',,,,,,,,,,,,,,,,%s,1,%d,%d,%d,1,%d,10,360#',
                'V600': '''3,1,1327,1327,<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <MDVRBus version="1.0">
     <CheckInfo UNIT_ID="%s" _TIME_="%s" _ZONE_="+8">
@@ -59,6 +62,11 @@ ERRORCODE = {'00030011': 'area limited by adding',
              '00030012': 'area existing by adding',
              '00030021': 'not exist by modifying',
              '00030031': 'not exist by deleting'}
+STORAGEERRORCODE = {'00000001': 'storage not exist',
+                    '00000002': 'storage cannot record',
+                    '00000003': 'storage space filled',
+                    '00000004': 'storage is not formated',
+                    '00000005': 'storage read or write abnormal'}
 
 mdvrList = {}
 
@@ -125,6 +133,17 @@ class MDVR(object):
         self.send('V61', self.onekeyalarmtimes)
         self.onekeyalarmtimes += 1
 
+    def sendV63(self, video):
+        if video == (False, False, False, False) or len(video) != 4:
+            return -1
+        else:
+            tmp = 0
+            for i in range(4):
+                if video[i]:
+                    tmp += 2 ** i
+            extmsg = ('%02x' % tmp).upper() + '00'
+            self.send('V63', uuid1(), extmsg)
+
     def sendV75(self, alerttype=2, historytime='', historygps1='', historygps2=''):
         if alerttype == 0:
             self.send('V75', uuid1(), alerttype, '', '', '')
@@ -136,7 +155,7 @@ class MDVR(object):
         parameternum = 0
         substr = ''
         if subtype == 12:
-            pass
+            inout = 1
         elif subtype == 13:
             parameternum = 7
             substr = ',%s,%.2f,%.2f,%s,%d,%.2f,%.2f' % (speedoverlower, float(minspeed), float(maxspeed), self.gpsinfo[3], int(duringtime), float(alarmminspeed), float(alarmmaxspeed))
@@ -151,12 +170,21 @@ class MDVR(object):
     def sendV68(self, temperaturetype, currenttemperature, mintemperature, maxtemperature, alerttype):
         self.send('V68', uuid1(), int(temperaturetype), float(currenttemperature), float(mintemperature), float(maxtemperature), int(alerttype))
 
+    def sendV69(self, errorcode):
+        if len(errorcode) > 0:
+            errmsg = '|'.join([STORAGEERRORCODE[i] for i in errorcode])
+            errcode = '|'.join(errorcode)
+            self.send('V69', uuid1(), errcode, errmsg)
+
+    def sendV78(self, currentvoltage, minvoltage, maxvoltage, alerttype):
+        self.send('V78', uuid1(), int(currentvoltage), int(minvoltage), int(maxvoltage), int(alerttype))
+
     def _onekeyalarm(self):
         self.sendonekeyalarm()
         if not self.onekeyalarmed:
             self.onekeyalarmed = True
             for i in xrange(2400):
-                if self.onekeyalarmed:
+                if self.onekeyalarmed and self.connect:
                     self.sendgps(4)
                     sleep(1)
                 else:
@@ -168,7 +196,7 @@ class MDVR(object):
         oka.start()
 
     def receive(self):
-        while True:
+        while self.connect:
             rec1 = self.sock.recv(4)
             if rec1 == '90dc':
                 self.log('receive:', rec1)
