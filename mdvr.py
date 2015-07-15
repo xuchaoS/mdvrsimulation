@@ -8,6 +8,8 @@ from time import ctime, strftime, sleep
 import re
 from uuid import uuid1
 import cx_Oracle
+import traceback
+import ConfigParser
 
 REGCJI = re.compile(r',\w{10},[^,]*,(C\d{1,3}),.*')
 REGCOUNT = re.compile(r',\w{10},([^,]*),C\d{1,3},\d+ \d+,.*')
@@ -36,7 +38,7 @@ SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                 <_INFO_ _NAME_="_TIME_" _STAT_="%s" />
                 <_INFO_ _NAME_="RecSD" _STAT_="E" />
                 <_INFO_ _NAME_="GPSINFO" _STAT_="%s" />
-                <_INFO_ _NAME_="Sensor1" _STAT_="FAIL" />
+                <_INFO_ _NAME_="Sensor1" _STAT_="OK" />
                 <_INFO_ _NAME_="Sensor2" _STAT_="NOEXIST" />
                 <_INFO_ _NAME_="Sensor3" _STAT_="NOEXIST" />
                 <_INFO_ _NAME_="StandbyPower" _STAT_="10.00V" />
@@ -74,10 +76,12 @@ mdvrList = {}
 class MDVR(object):
     def __init__(self, mdvrid, carid, ip='127.0.0.1', port=9876, gps1='', gps2='', speed='0', direction='0'):
         super(MDVR, self).__init__()
+        self.config = ConfigParser.ConfigParser()
         self.ip = ip
         self.port = port
         self.mdvrID = mdvrid
         self.carID = carid
+        self.config.read("etc/%s_config.ini" % (self.mdvrID))
         self.gpsinfo = ['V', gps1, gps2, speed, direction]
         self.setgps(gps1, gps2, speed, direction)
         self.bianhao = 0
@@ -87,8 +91,16 @@ class MDVR(object):
         mdvrList[self.mdvrID] = self
         self.trafficfenceid = []
         self.speedrule = (False, 0, 0, 0)
+        try:
+            # for i in self.config.options('trafficfenceid'):
+            #     self.trafficfenceid.append(self.config.get('trafficfenceid', i))
+            self.trafficfenceid = [self.config.get('trafficfenceid', i) for i in self.config.options('trafficfenceid')]
+            self.speedrule = (self.config.getboolean('speedrule', 'speedrule0'), self.config.getfloat('speedrule', 'speedrule1'), self.config.getfloat('speedrule', 'speedrule2'), self.config.getfloat('speedrule', 'speedrule3'))
+        except ConfigParser.NoSectionError:
+            pass
         self.sendnormalgpsd = False
         self.lastreceive = ''
+
 
     def start(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
@@ -123,6 +135,22 @@ class MDVR(object):
         self.connect = False
         self.onekeyalarmed = False
         self.sock.close()
+        if 'trafficfenceid' not in self.config.sections():
+            self.config.add_section('trafficfenceid')
+        if 'speedrule' not in self.config.sections():
+            self.config.add_section('speedrule')
+        for i in range(len(self.trafficfenceid)):
+            self.config.set('trafficfenceid', 'trafficfenceid%d' % i, self.trafficfenceid[i])
+        for i in range(len(self.speedrule)):
+            self.config.set('speedrule', 'speedrule%d' % i, self.speedrule[i])
+        # self.config.set('CONFIG', 'trafficfenceid', self.trafficfenceid)
+        # self.config.set('CONFIG', 'speedrule', self.speedrule)
+        f = open("etc/%s_config.ini" % (self.mdvrID), "w+")
+        self.config.write(f)
+        f.close()
+
+    def __del__(self):
+        self.stop()
 
     def sendselfcheck(self):
         currenttime = strftime('%Y/%m/%d %H:%M:%S %a').upper()
@@ -358,17 +386,22 @@ class MDVR(object):
         self.gpsinfo[0] = 'V' if len(gps1) == 0 and len(gps2) == 0 else 'A'
 
     def insertvideotodatabase(self, databaseip, instancename, username='vms', password='vms'):
-        conn = cx_Oracle.connect('%s/%s@%s/%s' % (username, password, databaseip, instancename))
-        cursor = conn.cursor()
-        cursor.execute('''select video_file from vms.ALARM_VIDEO''')
-        filename = cursor.fetchone()[0]
-        cursor.execute('''insert into vms.ALARM_VIDEO
-        (uuid, mdvr_id, channel_id, stream_id, alarm_id, start_time, end_time, video_size, video_file)
-        values('%s', '%s', 0, 2, '%s', to_date('%s','yyyymmddhh24miss'), to_date('%s','yyyymmddhh24miss'), 10240, '%s')'''
-                       % (uuid1(), self.mdvrID, self.onekeyalarmtimes, strftime('%Y%m%d%H%M%S'), strftime('%Y%m%d%H%M%S'), filename))
-        conn.commit()
-        conn.close()
-        self.log('Insert video file to database, filename is: %s' % filename)
+        try:
+            conn = cx_Oracle.connect('%s/%s@%s/%s' % (username, password, databaseip, instancename))
+            cursor = conn.cursor()
+            cursor.execute('''select video_file from vms.ALARM_VIDEO''')
+            filename = cursor.fetchone()[0]
+            cursor.execute('''insert into vms.ALARM_VIDEO
+            (uuid, mdvr_id, channel_id, stream_id, alarm_id, start_time, end_time, video_size, video_file)
+            values('%s', '%s', 0, 2, '%s', to_date('%s','yyyymmddhh24miss'), to_date('%s','yyyymmddhh24miss'), 10240, '%s')'''
+                           % (uuid1(), self.mdvrID, self.onekeyalarmtimes, strftime('%Y%m%d%H%M%S'), strftime('%Y%m%d%H%M%S'), filename))
+            conn.commit()
+            conn.close()
+            self.log('Insert video file to database, filename is: %s' % filename)
+            return filename
+        except cx_Oracle.DatabaseError, e:
+            traceback.print_exc()
+            raise
 
     def sendnormalgps(self, delay, count):
         for i in range(int(count)):

@@ -45,6 +45,7 @@ class ShangxcGUI(object):
     def _bind(self, obj, limit, checkrule):
         obj.bind('<KeyPress>', lambda ev=None: self.record(limit, ev))
         obj.bind('<KeyRelease>', lambda ev=None: self.lenlimit(limit, checkrule, ev))
+        obj.bind('<FocusOut>', lambda ev=None: self.check(checkrule, ev))
 
     def record(self, limit, ev=None):
         str = ev.widget.get()

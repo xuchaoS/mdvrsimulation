@@ -4,9 +4,10 @@ __author__ = 'shangxc'
 
 from Tkinter import *
 from mdvr import MDVR
-from tkMessageBox import showerror
+from tkMessageBox import showerror, showinfo
 from shangxcgui import ShangxcGUI
 from time import strftime
+import ConfigParser
 
 REGIP = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
 REGPORT = r'\d{1,5}$'
@@ -25,8 +26,12 @@ class GuiMDVR(ShangxcGUI):
     def __init__(self):
         super(GuiMDVR, self).__init__()
         self.root.title('mdvr模拟器')
+        self.root.protocol("WM_DELETE_WINDOW", self._exit)
         self.frame = []
         self.runtimebutton = []
+        self.config = ConfigParser.ConfigParser()
+        self.config.read('etc/config.ini')
+        self.defaultvalue = {}
         for i in range(20):
             self.frame.append(Frame(self.root))
             self.frame[i].pack()
@@ -55,7 +60,7 @@ class GuiMDVR(ShangxcGUI):
         self.databaseip = Entry()
         self.inputbox('databaseip', '数据库IP', 'self.frame[2]', 15, REGIP, '172.16.50.53')
         self.instancename = Entry()
-        self.inputbox('instancename', '数据库实例名', 'self.frame[2]', 10, REGMDVRID, 'newsima')
+        self.inputbox('instancename', '数据库实例名', 'self.frame[2]', 10, REGNO, 'newsima')
         self.username = Entry()
         self.inputbox('username', '用户名', 'self.frame[2]', 10, REGNO, 'vms')
         self.password = Entry()
@@ -86,7 +91,8 @@ class GuiMDVR(ShangxcGUI):
         Label(self.frame[4], text='区域告警子类型：').pack(side=LEFT)
         Radiobutton(self.frame[4], variable=self.subtype, text='越界告警', value=12, command=self.changesubtype).pack(side=LEFT)
         Radiobutton(self.frame[4], variable=self.subtype, text='围栏内速度告警', value=13, command=self.changesubtype).pack(side=LEFT)
-        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[4]', 5, 'REGPORT', '0')
+        self.trafficfenceid = Entry()
+        self.inputbox('trafficfenceid', '      告警电子围栏编号', 'self.frame[4]', 5, REGPORT, '0')
 
         self.inout = IntVar()
         self.inout.set(1)
@@ -96,7 +102,6 @@ class GuiMDVR(ShangxcGUI):
         self.inout1.pack(side=LEFT)
         self.inout2 = Radiobutton(self.frame[5], variable=self.inout, text='出电子围栏', value=0)
         self.inout2.pack(side=LEFT)
-        self.trafficfenceid = Entry()
         self.speedoverlower = IntVar()
         self.speedoverlower.set(0)
         self.speedoverlowertips = Label(self.frame[5], text='          围栏内低速/超速：', fg='gray')
@@ -300,7 +305,12 @@ class GuiMDVR(ShangxcGUI):
         self.mdvrcli.sendonline()
 
     def _insertvideodata(self):
-        self.mdvrcli.insertvideotodatabase(self.databaseip.get(), self.instancename.get(), self.username.get(), self.password.get())
+        try:
+            filename = self.mdvrcli.insertvideotodatabase(self.databaseip.get(), self.instancename.get(), self.username.get(), self.password.get())
+        except:
+            showerror('ERROR', '无法连接，请检查数据库配置！！！')
+        else:
+            showinfo('','已插入视频数据，文件名：%s' % filename)
 
     def _speedrulereflash(self):
         self.speedruleonoff.config(text='开启' if self.mdvrcli.speedrule[0] else '关闭')
@@ -343,6 +353,33 @@ class GuiMDVR(ShangxcGUI):
 
     def _voltagealert(self):
         self.mdvrcli.sendV78(int(float(self.currentvoltage.get())*10), int(float(self.minvoltage.get())*10), int(float(self.maxvoltage.get())*10), self.voltagealerttype.get())
+
+    def _exit(self):
+        # config = ConfigParser.ConfigParser()
+        # config.add_section("CONFIG")
+        # for i in self.defaultvalue:
+        #     config.set("CONFIG", i, self.defaultvalue[i])
+        # f = open('config.ini', "a+")
+        # config.write(f)
+        # f.close
+
+        # self.config.remove_section('CONFIG')
+        # self.config.add_section("CONFIG")
+        for i in self.defaultvalue:
+            self.config.set("CONFIG", i, eval('self.%s.get()' % i))
+        f = open('etc/config.ini', "w+")
+        self.config.write(f)
+        f.close()
+        try:
+            self.mdvrcli.stop()
+        except AttributeError:
+            pass
+        self.root.quit()
+
+    def inputbox(self, name, tips, father, limit, checkrule, defaultvalue='', state='NORMAL'):
+        super(GuiMDVR, self).inputbox(name, tips, father, limit, checkrule, self.config.get('CONFIG', name), state)
+        # super(GuiMDVR, self).inputbox(name, tips, father, limit, checkrule, defaultvalue, state)
+        self.defaultvalue[name] = defaultvalue
 
 if __name__ == '__main__':
     GuiMDVR()
