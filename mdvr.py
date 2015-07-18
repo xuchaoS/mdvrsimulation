@@ -25,7 +25,7 @@ SENDMESSAGE = {'V1': '0.0.3.08,0101,%s:%s,0,2,,%s#',
                'V68': ',,,,,,,,,,,,,,,,%s,1,%d,%.2f,%.2f,%.2f,1,%d,0.00,99.99#',
                'V69': ',,,,,,,,,,,,,,,,%s,1,1,%s,%s#',
                'V70': ',,,,,,,,,,,,,,,,%s,1,%.2f,%.2f,%.2f,%d,1,1,0.00,199.99#',
-               'V75': ',,,,,,,,,,,,,,,,%s,1,%d,%s,%s,%s#,',
+               'V75': ',,,,,,,,,,,,,,,,%s,1,%d,%s,%s,%s#',
                'V79': ',,,,,,,,,,,,,,,,%s,1,1,%d,%s,,,%d,%d%s#',
                'V77': '02000000,,#',
                'V78': ',,,,,,,,,,,,,,,,%s,1,%d,%d,%d,1,%d,10,360#',
@@ -101,7 +101,6 @@ class MDVR(object):
         self.sendnormalgpsd = False
         self.lastreceive = ''
 
-
     def start(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
         try:
@@ -148,6 +147,7 @@ class MDVR(object):
         f = open("etc/%s_config.ini" % (self.mdvrID), "w+")
         self.config.write(f)
         f.close()
+        del mdvrList[self.mdvrID]
 
     def __del__(self):
         self.stop()

@@ -4,7 +4,7 @@ __author__ = 'shangxc'
 
 from Tkinter import *
 from mdvr import MDVR
-from tkMessageBox import showerror, showinfo
+from tkMessageBox import showerror, showinfo, askyesno
 from shangxcgui import ShangxcGUI
 from time import strftime
 import ConfigParser
@@ -35,6 +35,11 @@ class GuiMDVR(ShangxcGUI):
         for i in range(20):
             self.frame.append(Frame(self.root))
             self.frame[i].pack()
+
+        self.recover = Button()
+        self.userbutton('recover', '恢复出厂设置', 'self.frame[0]', 'self._recover', 'NORMAL')
+        self.reset = Button()
+        self.userbutton('reset', '重置', 'self.frame[0]', 'self._reset', 'NORMAL')
         self.ip = Entry()
         self.inputbox('ip', 'ip', 'self.frame[0]', 15, REGIP, '127.0.0.1')
         self.port = Entry()
@@ -216,6 +221,12 @@ class GuiMDVR(ShangxcGUI):
         self.voltagealert = Button()
         self.userbutton('voltagealert', '电压异常告警', 'self.frame[15]', 'self._voltagealert')
 
+        Label(self.frame[16], text='自定义指令：').pack(side=LEFT)
+        self.custommessage = Text(self.frame[16], height=2)
+        self.custommessage.pack(side=LEFT)
+        self.sendcustommessage = Button()
+        self.userbutton('sendcustommessage', '发送', 'self.frame[16]', 'self._sendcustommessage')
+
         Label(self.frame[18], text='最后接收指令：').pack(side=LEFT)
         self.lastreceive = Label(self.frame[18],justify=LEFT)
         self.lastreceive.pack(side=LEFT)
@@ -235,6 +246,8 @@ class GuiMDVR(ShangxcGUI):
             self.ip.config(state=DISABLED)
             self.port.config(state=DISABLED)
             self.start.config(state=DISABLED)
+            self.reset.config(state=DISABLED)
+            self.recover.config(state=DISABLED)
             for i in self.runtimebutton:
                 i.config(state=NORMAL)
             self.stoponekeyalarm.config(state=DISABLED)
@@ -245,6 +258,8 @@ class GuiMDVR(ShangxcGUI):
         self.ip.config(state=NORMAL)
         self.port.config(state=NORMAL)
         self.start.config(state=NORMAL)
+        self.reset.config(state=NORMAL)
+        self.recover.config(state=NORMAL)
         for i in self.runtimebutton:
             i.config(state=DISABLED)
 
@@ -355,16 +370,6 @@ class GuiMDVR(ShangxcGUI):
         self.mdvrcli.sendV78(int(float(self.currentvoltage.get())*10), int(float(self.minvoltage.get())*10), int(float(self.maxvoltage.get())*10), self.voltagealerttype.get())
 
     def _exit(self):
-        # config = ConfigParser.ConfigParser()
-        # config.add_section("CONFIG")
-        # for i in self.defaultvalue:
-        #     config.set("CONFIG", i, self.defaultvalue[i])
-        # f = open('config.ini', "a+")
-        # config.write(f)
-        # f.close
-
-        # self.config.remove_section('CONFIG')
-        # self.config.add_section("CONFIG")
         for i in self.defaultvalue:
             self.config.set("CONFIG", i, eval('self.%s.get()' % i))
         f = open('etc/config.ini', "w+")
@@ -379,7 +384,28 @@ class GuiMDVR(ShangxcGUI):
     def inputbox(self, name, tips, father, limit, checkrule, defaultvalue='', state='NORMAL'):
         super(GuiMDVR, self).inputbox(name, tips, father, limit, checkrule, self.config.get('CONFIG', name), state)
         # super(GuiMDVR, self).inputbox(name, tips, father, limit, checkrule, defaultvalue, state)
-        self.defaultvalue[name] = defaultvalue
+        self.defaultvalue[name] = self.config.get('CONFIG', name)
+
+    def _sendcustommessage(self):
+        message = self.custommessage.get(1.0, END).strip()
+        self.mdvrcli.sock.send(message)
+        self.mdvrcli.log('send   :', message)
+
+    def _reset(self):
+        if askyesno('', '重置将覆盖当前输入框信息，无法恢复，是否继续？？'):
+            for i in self.defaultvalue:
+                exec('self.%s.delete(0, END)' % i)
+                exec('self.%s.insert(0, "%s")' % (i, self.defaultvalue[i]))
+
+    def _recover(self):
+        if askyesno('','恢复出厂设置将覆盖当前输入框信息，无法恢复，是否继续？'):
+            recover = ConfigParser.ConfigParser()
+            recover.read('etc/config_original.ini')
+            for i in self.defaultvalue:
+                self.defaultvalue[i] = recover.get('CONFIG', i)
+                exec('self.%s.delete(0, END)' % i)
+                exec('self.%s.insert(0, "%s")' % (i, self.defaultvalue[i]))
+
 
 if __name__ == '__main__':
     GuiMDVR()
