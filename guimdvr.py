@@ -134,6 +134,9 @@ class GuiMDVR(ShangxcGUI):
             self.trafficfenceids[i].pack(side=LEFT)
         self.trafficfenceidsreflash = Button()
         self.userbutton('trafficfenceidsreflash', '刷新', 'self.frame[7]', 'self._trafficfenceidsreflash')
+        # Label(self.frame[7], width=0).pack(side=LEFT)
+        self.trafficfenceidsreset = Button()
+        self.userbutton('trafficfenceidsreset', '清空', 'self.frame[7]', 'self._trafficfenceidsreset')
 
         Label(self.frame[8], text=' 超速告警参数').pack(side=LEFT)
         Label(self.frame[8], text='       是否开启:').pack(side=LEFT)
@@ -150,6 +153,9 @@ class GuiMDVR(ShangxcGUI):
         self.speedruletime.pack(side=LEFT)
         self.speedrulereflash = Button()
         self.userbutton('speedrulereflash', '刷新', 'self.frame[8]', 'self._speedrulereflash')
+        # Label(self.frame[8], width=0).pack(side=LEFT)
+        self.speedrulereset = Button()
+        self.userbutton('speedrulereset', '清空', 'self.frame[8]', 'self._speedrulereset')
 
 
         self.temperaturetype = IntVar()
@@ -251,6 +257,8 @@ class GuiMDVR(ShangxcGUI):
             for i in self.runtimebutton:
                 i.config(state=NORMAL)
             self.stoponekeyalarm.config(state=DISABLED)
+        self._trafficfenceidsreflash()
+        self._speedrulereflash()
 
     def stopmdvr(self):
         self.mdvrcli.stop()
@@ -308,10 +316,10 @@ class GuiMDVR(ShangxcGUI):
 
     def _fencealert(self):
         if self.subtype.get() == 12:
-            print 12
+            #print 12
             self.mdvrcli.sendV79(self.inout.get(), self.trafficfenceid.get(), 12)
         elif self.subtype.get() == 13:
-            print 13
+            #print 13
             self.mdvrcli.sendV79(self.inout.get(), self.trafficfenceid.get(), 13,
                                  self.speedoverlower.get(), self.minspeed.get(), self.maxspeed.get(), self.duringtime.get(), self.alarmminspeed.get(), self.alarmmaxspeed.get())
 
@@ -374,6 +382,7 @@ class GuiMDVR(ShangxcGUI):
             self.config.set("CONFIG", i, eval('self.%s.get()' % i))
         f = open('etc/config.ini', "w+")
         self.config.write(f)
+        self.config.write(f)
         f.close()
         try:
             self.mdvrcli.stop()
@@ -405,6 +414,15 @@ class GuiMDVR(ShangxcGUI):
                 self.defaultvalue[i] = recover.get('CONFIG', i)
                 exec('self.%s.delete(0, END)' % i)
                 exec('self.%s.insert(0, "%s")' % (i, self.defaultvalue[i]))
+
+    def _trafficfenceidsreset(self):
+        self.mdvrcli.trafficfenceid = []
+        self._trafficfenceidsreflash()
+
+    def _speedrulereset(self):
+        self.mdvrcli.speedrule = (False, 0, 0, 0)
+        self._speedrulereflash()
+
 
 
 if __name__ == '__main__':

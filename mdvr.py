@@ -10,6 +10,8 @@ from uuid import uuid1
 import cx_Oracle
 import traceback
 import ConfigParser
+from os import mkdir, path
+from datetime import datetime
 
 REGCJI = re.compile(r',\w{10},[^,]*,(C\d{1,3}),.*')
 REGCOUNT = re.compile(r',\w{10},([^,]*),C\d{1,3},\d+ \d+,.*')
@@ -81,7 +83,7 @@ class MDVR(object):
         self.port = port
         self.mdvrID = mdvrid
         self.carID = carid
-        self.config.read("etc/%s_config.ini" % (self.mdvrID))
+        self.config.read("tmp/%s_config.ini" % (self.mdvrID))
         self.gpsinfo = ['V', gps1, gps2, speed, direction]
         self.setgps(gps1, gps2, speed, direction)
         self.bianhao = 0
@@ -94,10 +96,13 @@ class MDVR(object):
         try:
             # for i in self.config.options('trafficfenceid'):
             #     self.trafficfenceid.append(self.config.get('trafficfenceid', i))
-            self.trafficfenceid = [self.config.get('trafficfenceid', i) for i in self.config.options('trafficfenceid')]
-            self.speedrule = (self.config.getboolean('speedrule', 'speedrule0'), self.config.getfloat('speedrule', 'speedrule1'), self.config.getfloat('speedrule', 'speedrule2'), self.config.getfloat('speedrule', 'speedrule3'))
+            # self.trafficfenceid = [self.config.get('trafficfenceid', i) for i in self.config.options('trafficfenceid')]
+            # self.speedrule = (self.config.getboolean('speedrule', 'speedrule0'), self.config.getfloat('speedrule', 'speedrule1'), self.config.getfloat('speedrule', 'speedrule2'), self.config.getfloat('speedrule', 'speedrule3'))
+            self.trafficfenceid = eval(self.config.get('CONFIG','trafficfenceid'))
+            self.speedrule = eval(self.config.get('CONFIG','speedrule'))
         except ConfigParser.NoSectionError:
             pass
+        #print self.trafficfenceid, self.speedrule
         self.sendnormalgpsd = False
         self.lastreceive = ''
 
@@ -134,20 +139,27 @@ class MDVR(object):
         self.connect = False
         self.onekeyalarmed = False
         self.sock.close()
-        if 'trafficfenceid' not in self.config.sections():
-            self.config.add_section('trafficfenceid')
-        if 'speedrule' not in self.config.sections():
-            self.config.add_section('speedrule')
-        for i in range(len(self.trafficfenceid)):
-            self.config.set('trafficfenceid', 'trafficfenceid%d' % i, self.trafficfenceid[i])
-        for i in range(len(self.speedrule)):
-            self.config.set('speedrule', 'speedrule%d' % i, self.speedrule[i])
-        # self.config.set('CONFIG', 'trafficfenceid', self.trafficfenceid)
-        # self.config.set('CONFIG', 'speedrule', self.speedrule)
-        f = open("etc/%s_config.ini" % (self.mdvrID), "w+")
+        # if 'trafficfenceid' not in self.config.sections():
+        #     self.config.add_section('trafficfenceid')
+        # if 'speedrule' not in self.config.sections():
+        #     self.config.add_section('speedrule')
+        # for i in range(len(self.trafficfenceid)):
+        #     self.config.set('trafficfenceid', 'trafficfenceid%d' % i, self.trafficfenceid[i])
+        # for i in range(len(self.speedrule)):
+        #     self.config.set('speedrule', 'speedrule%d' % i, self.speedrule[i])
+        if 'CONFIG' not in self.config.sections():
+            self.config.add_section('CONFIG')
+        self.config.set('CONFIG', 'trafficfenceid', self.trafficfenceid)
+        self.config.set('CONFIG', 'speedrule', self.speedrule)
+        if not path.exists('tmp'):
+            mkdir('tmp')
+        f = open("tmp/%s_config.ini" % (self.mdvrID), "w+")
         self.config.write(f)
         f.close()
-        del mdvrList[self.mdvrID]
+        try:
+            del mdvrList[self.mdvrID]
+        except KeyError:
+            pass
 
     def __del__(self):
         self.stop()
@@ -242,11 +254,13 @@ class MDVR(object):
             servertime = analysised['servertime']
             count = analysised['count']
         except KeyError, e:
+            traceback.print_exc()
             print 'KeyError:', e.message
         else:
             try:
                 cji = analysised['cji']
             except KeyError, e:
+                traceback.print_exc()
                 print 'KeyError:', e.message
             else:
                 if cji == 'C0':
@@ -349,8 +363,13 @@ class MDVR(object):
         return result
 
     def log(self, *args):
-        message = ''.join([ctime(), ' '] + list(args) + ['\n'])
+        message = ''.join([str(datetime.now()), '|'] + list(args) + ['\n'])
         print message,
+        if not path.exists('log'):
+            mkdir('log')
+        f = open('log/%s_%s.log' % (self.mdvrID, strftime('%Y%m%d')), 'a+')
+        f.write(message)
+        f.close()
 
     def send(self, vji, *args):
         if self.connect:
